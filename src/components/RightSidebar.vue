@@ -80,8 +80,6 @@ const emit = defineEmits<{
 // 计算属性
 const popularPosts = computed(() => blogStore.getPopularPosts(5))
 const recentPosts = computed(() => blogStore.getRecentPosts(5))
-const categories = computed(() => blogStore.getAllCategories())
-const tags = computed(() => blogStore.getAllTags())
 const archive = computed(() => blogStore.getArchive())
 
 // 方法

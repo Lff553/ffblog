@@ -324,9 +324,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch, nextTick } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { useBlogStore, type Post } from '../stores/post'
+import { useBlogStore} from '../stores/post'
 import { isLocalAccess } from '../utils/permission'
 
 const router = useRouter()
@@ -369,8 +369,6 @@ const totalPages = computed(() => {
 
 const stats = computed(() => blogStore.getStats())
 const categories = computed(() => blogStore.getAllCategories())
-const tags = computed(() => blogStore.getAllTags())
-const recentPosts = computed(() => blogStore.getRecentPosts(5))
 const popularPosts = computed(() => blogStore.getPopularPosts(5))
 
 // 可见页码
@@ -461,12 +459,6 @@ const deletePost = async (id: number) => {
 const filterByTag = (tag: string) => {
   selectedTag.value = tag
   selectedCategory.value = ''
-  resetToFirstPage()
-}
-
-const filterByCategory = (category: string) => {
-  selectedCategory.value = category
-  selectedTag.value = ''
   resetToFirstPage()
 }
 
