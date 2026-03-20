@@ -238,7 +238,6 @@ const validationErrors = ref({
 
 // 分类选项
 const categories = computed(() => {
-  const catSet = new Set(blogStore.getAllCategories().map(cat => cat.name))
   return ['前端', '后端', '全栈', '数据库', '运维', '设计', '生活', '随笔']
 })
 

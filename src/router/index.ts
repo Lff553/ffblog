@@ -1,6 +1,5 @@
 // router/index.ts
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
-import Layout from '../App.vue'  // 引入布局组件
 
 // 定义路由元信息类型
 declare module 'vue-router' {

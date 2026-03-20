@@ -296,7 +296,6 @@ const searchKeyword = ref('')
 const selectedCategory = ref('')
 const selectedTag = ref('')
 const showCategoryDropdown = ref(false)
-const defaultCover = 'https://picsum.photos/400/200'
 
 // 检查是否是管理员
 const isAdmin = computed(() => isLocalAccess())
@@ -373,13 +372,6 @@ const formatDate = (dateStr: string) => {
   })
 }
 
-const formatDateShort = (dateStr: string) => {
-  const date = new Date(dateStr)
-  return date.toLocaleDateString('zh-CN', {
-    month: 'short',
-    day: 'numeric'
-  })
-}
 
 const viewPost = (id: number) => {
   router.push(`/post/${id}`)
