@@ -144,24 +144,15 @@
               class="post-card list-view"
               @click="viewPost(post.id)"
             >
-              <!-- 封面 -->
-              <div v-if="post.coverImage" class="post-cover">
-                <img :src="post.coverImage" :alt="post.title" />
-                <div v-if="post.category" class="category-badge">
-                  {{ post.category }}
-                </div>
-              </div>
               
               <!-- 内容 -->
               <div class="post-content">
                 <div class="post-header">
                   <h2 class="post-title">{{ post.title }}</h2>
                   <div class="post-meta">
-                    <span class="post-author">👤 {{ post.author }}</span>
                     <span class="post-date">📅 {{ formatDate(post.date) }}</span>
                   </div>
                 </div>
-                
                 <p class="post-excerpt">{{ post.excerpt }}</p>
                 
                 <div class="post-footer">
@@ -174,18 +165,6 @@
                       @click.stop="filterByTag(tag)"
                     >
                       #{{ tag }}
-                    </span>
-                  </div>
-                  
-                  <!-- 统计数据 -->
-                  <div class="post-stats">
-                    <span class="stat">
-                      <span class="stat-icon">👁️</span>
-                      <span class="stat-number">{{ post.views }}</span>
-                    </span>
-                    <span class="stat">
-                      <span class="stat-icon">❤️</span>
-                      <span class="stat-number">{{ post.likes }}</span>
                     </span>
                   </div>
                 </div>
@@ -219,15 +198,7 @@
               class="post-card grid-view"
               @click="viewPost(post.id)"
             >
-              <!-- 封面 -->
-              <div class="post-cover-grid">
-                <img :src="post.coverImage || defaultCover" :alt="post.title" />
-                <div class="cover-overlay">
-                  <div v-if="post.category" class="category-badge">
-                    {{ post.category }}
-                  </div>
-                </div>
-              </div>
+       
               
               <!-- 内容 -->
               <div class="post-content-grid">
@@ -235,15 +206,6 @@
                 
                 <p class="post-excerpt-grid">{{ post.excerpt }}</p>
                 
-                <div class="post-meta-grid">
-                  <div class="meta-left">
-                    <span class="post-author-grid">👤 {{ post.author }}</span>
-                    <span class="post-date-grid">{{ formatDateShort(post.date) }}</span>
-                  </div>
-                  <div class="meta-right">
-                    <span class="post-views-grid">👁️ {{ post.views }}</span>
-                  </div>
-                </div>
                 
                 <!-- 标签 -->
                 <div class="post-tags-grid">
@@ -268,13 +230,6 @@
             <div class="empty-icon">📄</div>
             <h3>没有找到相关文章</h3>
             <p>尝试其他搜索条件或创建新文章</p>
-            <button
-              v-if="isAdmin"
-              @click="goToCreate"
-              class="create-post-btn"
-            >
-              ✍️ 写文章
-            </button>
           </div>
 
           <!-- 分页 -->
@@ -499,7 +454,7 @@ const clearAllFilters = () => {
 }
 
 const goToCreate = () => {
-  router.push('/create')
+  router.push('/add')
 }
 
 // 分页方法
@@ -618,7 +573,7 @@ watch(currentPage, () => {
 }
 
 .search-input {
-  width: 90%;
+  width: 95%;
   padding: 16px 24px;
   padding-right: 50px;
   border: none;
@@ -1051,7 +1006,7 @@ watch(currentPage, () => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding-top: 16px;
+  padding-top: 10px;
   border-top: 1px solid #f0f0f0;
 }
 
@@ -1101,7 +1056,7 @@ watch(currentPage, () => {
 }
 
 .post-actions {
-  margin-top: 16px;
+  margin-top: 10px;
   display: flex;
   gap: 10px;
   padding-top: 16px;

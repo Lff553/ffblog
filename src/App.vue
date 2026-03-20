@@ -11,10 +11,9 @@
       
       <!-- 主内容区 -->
       <main class="main-content">
-        <slot>
-          <!-- 默认内容，可由父组件覆盖 -->
-          <MainContent />
-        </slot>
+       
+          <router-view />
+       
       </main>
       
       <!-- 右侧边栏 -->
@@ -29,7 +28,6 @@
 import Header from './components/Header.vue'
 import LeftSidebar from './components/LeftSidebar.vue'
 import RightSidebar from './components/RightSidebar.vue'
-import MainContent from './components/MainContent.vue'
 </script>
 
 <style scoped>
@@ -103,7 +101,7 @@ import MainContent from './components/MainContent.vue'
   
   .right-sidebar {
     flex: 1;
-    min-width: 300px;
+    min-width: 200px;
   }
 }
 
@@ -121,7 +119,8 @@ import MainContent from './components/MainContent.vue'
   }
   
   .main-content {
-    order: 2; /* 主内容在中间显示 */
+    order: 1; /* 主内容在中间显示 */
+    padding: 0;
   }
 }
 </style>

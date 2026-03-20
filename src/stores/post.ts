@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import { isLocalAccess } from '../utils/permission'
 
 // 文章接口
@@ -16,72 +16,49 @@ export interface Post {
   coverImage?: string// 文章封面图片
   category?: string// 文章分类
   createdAt: string// 文章创建时间
+  updatedAt?: string// 文章更新时间
 }
 
 export const useBlogStore = defineStore('blog', () => {
-  // 状态
-  const posts = ref<Post[]>([
-    {
-      id: 1,
-      title: '欢迎来到我的博客',
-      content: '# 欢迎\n\n这是我的第一篇博客文章，欢迎阅读！',
-      excerpt: '这是我的第一篇博客文章，介绍了博客的基本情况',
-      date: '2024-01-01',
-      tags: ['欢迎', '博客'],
-      author: '管理员',
-      views: 156,
-      likes: 12,
-      coverImage: 'https://picsum.photos/600/300?random=1',
-      category: '公告',
-      createdAt: '2024-01-01T10:00:00'
-    },
-    {
-      id: 2,
-      title: 'Vue 3 入门指南',
-      content: '# Vue 3 入门\n\nVue 3 是一个非常优秀的前端框架...',
-      excerpt: '本文介绍Vue 3的基本用法和核心概念',
-      date: '2024-01-02',
-      tags: ['Vue', '前端', '教程'],
-      author: '管理员',
-      views: 234,
-      likes: 45,
-      coverImage: 'https://picsum.photos/600/300?random=2',
-      category: '前端',
-      createdAt: '2024-01-02T14:30:00'
-    },
-    {
-      id: 3,
-      title: 'TypeScript 类型系统详解',
-      content: '# TypeScript 类型系统\n\nTypeScript 的类型系统是其最强大的功能之一...',
-      excerpt: '深入探讨TypeScript的类型系统',
-      date: '2024-01-03',
-      tags: ['TypeScript', 'JavaScript'],
-      author: '管理员',
-      views: 189,
-      likes: 28,
-      coverImage: 'https://picsum.photos/600/300?random=3',
-      category: '前端',
-      createdAt: '2024-01-03T09:15:00'
-    },
-    {
-      id: 4,
-      title: 'Node.js 性能优化',
-      content: '# Node.js 性能优化\n\nNode.js 应用的性能优化技巧...',
-      excerpt: 'Node.js应用性能优化的实用技巧',
-      date: '2024-01-04',
-      tags: ['Node.js', '后端', '性能'],
-      author: '管理员',
-      views: 145,
-      likes: 19,
-      coverImage: 'https://picsum.photos/600/300?random=4',
-      category: '后端',
-      createdAt: '2024-01-04T16:45:00'
+  // 从 localStorage 加载初始数据
+  const loadFromStorage = (): Post[] => {
+    try {
+      const stored = localStorage.getItem('blog-posts')
+      if (stored) {
+        return JSON.parse(stored)
+      }
+    } catch (error) {
+      console.error('加载存储失败:', error)
     }
-  ])
+    return []
+  }
+
+  // 保存到 localStorage
+  const saveToStorage = (posts: Post[]) => {
+    try {
+      localStorage.setItem('blog-posts', JSON.stringify(posts))
+    } catch (error) {
+      console.error('保存到存储失败:', error)
+    }
+  }
+
+
+  // 状态 - 从存储加载，如果没有则使用初始数据
+  const storedPosts = loadFromStorage()
+  const posts = ref<Post[]>(storedPosts.length > 0 ? storedPosts : [])
   
   const isLoading = ref(false)
   const error = ref<string | null>(null)
-  
+
+  // 监听 posts 变化，自动保存
+  watch(
+    posts,
+    (newPosts) => {
+      saveToStorage(newPosts)
+    },
+    { deep: true }  // 深度监听，确保对象内部变化也会触发保存
+  )
+
   // 获取所有文章的方法
   const getAllPosts = (options?: {
     includeDrafts?: boolean
@@ -101,15 +78,14 @@ export const useBlogStore = defineStore('blog', () => {
       sortOrder = 'desc'
     } = options || {}
     
-    
-    // 2. 按分类过滤
+    // 1. 按分类过滤
     if (filterByCategory) {
       filteredPosts = filteredPosts.filter(post => 
         post.category?.toLowerCase() === filterByCategory.toLowerCase()
       )
     }
     
-    // 3. 按标签过滤
+    // 2. 按标签过滤
     if (filterByTag) {
       filteredPosts = filteredPosts.filter(post => 
         post.tags.some(tag => 
@@ -118,7 +94,7 @@ export const useBlogStore = defineStore('blog', () => {
       )
     }
     
-    // 4. 搜索
+    // 3. 搜索
     if (searchKeyword) {
       const keyword = searchKeyword.toLowerCase()
       filteredPosts = filteredPosts.filter(post => 
@@ -131,7 +107,7 @@ export const useBlogStore = defineStore('blog', () => {
       )
     }
     
-    // 5. 排序
+    // 4. 排序
     filteredPosts.sort((a, b) => {
       let aValue: any, bValue: any
       
@@ -201,7 +177,7 @@ export const useBlogStore = defineStore('blog', () => {
       .sort((a, b) => b.count - a.count)
   }
   
-  //  获取所有标签
+  // 获取所有标签
   const getAllTags = (): Array<{ name: string; count: number }> => {
     const tags: Record<string, number> = {}
     
@@ -249,12 +225,12 @@ export const useBlogStore = defineStore('blog', () => {
     return posts.value.find(post => post.id === id)
   }
   
-  //  按标签获取文章
+  // 按标签获取文章
   const getPostsByTag = (tag: string): Post[] => {
     return getAllPosts({ filterByTag: tag })
   }
   
-  //  按分类获取文章
+  // 按分类获取文章
   const getPostsByCategory = (category: string): Post[] => {
     return getAllPosts({ filterByCategory: category })
   }
@@ -272,14 +248,14 @@ export const useBlogStore = defineStore('blog', () => {
     }
     
     const now = new Date().toISOString()
-  const nextId = posts.value.length > 0 ? Math.max(...posts.value.map(post => post.id)) + 1 : 1;
-   const newPost: Post = {
-  ...postData,
-  id: nextId,  // 获取下一个可用ID
-  views: 0,
-  likes: 0,
-  createdAt: now
-}
+    const nextId = posts.value.length > 0 ? Math.max(...posts.value.map(post => post.id)) + 1 : 1
+    const newPost: Post = {
+      ...postData,
+      id: nextId,
+      views: 0,
+      likes: 0,
+      createdAt: now
+    }
     
     posts.value.unshift(newPost)
     return newPost
@@ -299,12 +275,13 @@ export const useBlogStore = defineStore('blog', () => {
     
     posts.value[index] = { 
       ...posts.value[index], 
-      ...updates
+      ...updates,
+      updatedAt: new Date().toISOString()
     }
     return true
   }
   
-  //删除文章（需要本地权限）
+  // 删除文章（需要本地权限）
   const deletePost = (id: number): boolean => {
     if (!isLocalAccess()) {
       console.error('无权限删除文章')
@@ -335,18 +312,15 @@ export const useBlogStore = defineStore('blog', () => {
   // 获取统计信息
   const getStats = () => {
     const allPosts = getAllPosts()
-    const publishedPosts = getAllPosts({ includeDrafts: false })
 
     return {
       total: allPosts.length,
-      published: publishedPosts.length,
       totalViews: allPosts.reduce((sum, post) => sum + post.views, 0),
       totalLikes: allPosts.reduce((sum, post) => sum + post.likes, 0),
       categories: getAllCategories().length,
       tags: getAllTags().length
     }
   }
-  
 
   
   return {

@@ -304,13 +304,13 @@ const tags = computed(() => blogStore.getAllTags())
   z-index: 2;
 }
 
-.tag-cloud::after {
+.tag-cloud::before {
   content: '#';
   margin-right: 2px;
   opacity: 0.5;
 }
 
-.tag-cloud:hover::after {
+.tag-cloud:hover::before {
   opacity: 0.8;
 }
 

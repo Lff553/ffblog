@@ -1,25 +1,5 @@
 <template>
   <aside class="sidebar">
-    <!-- 热门文章 -->
-    <div class="widget">
-      <h3 class="widget-title">🔥 热门文章</h3>
-      <ul class="hot-posts">
-        <li
-          v-for="post in popularPosts"
-          :key="post.id"
-          class="hot-post"
-          @click="viewPost(post.id)"
-        >
-          <div class="hot-post-content">
-            <h4>{{ post.title }}</h4>
-            <div class="hot-post-meta">
-              <span>👁️ {{ post.views }}</span>
-              <span>📅 {{ formatDateShort(post.date) }}</span>
-            </div>
-          </div>
-        </li>
-      </ul>
-    </div>
     <!-- 最新文章 -->
     <div class="widget">
       <h3 class="widget-title">🆕 最新文章</h3>
@@ -78,8 +58,7 @@ const emit = defineEmits<{
 }>()
 
 // 计算属性
-const popularPosts = computed(() => blogStore.getPopularPosts(5))
-const recentPosts = computed(() => blogStore.getRecentPosts(5))
+const recentPosts = computed(() => blogStore.getRecentPosts(7))
 const archive = computed(() => blogStore.getArchive())
 
 // 方法
@@ -93,7 +72,6 @@ const formatDateShort = (dateStr: string) => {
 
 const viewPost = (postId: number) => {
   router.push(`/post/${postId}`)
-  blogStore.incrementViews(postId)
 }
 
 
@@ -128,80 +106,6 @@ const viewPost = (postId: number) => {
   border-bottom: 2px solid #667eea;
   display: inline-block;
   width: 100%;
-}
-
-/* 热门文章 */
-.hot-posts {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.hot-post {
-  display: flex;
-  gap: 12px;
-  cursor: pointer;
-  transition: all 0.2s;
-  padding: 8px 0;
-  border-bottom: 1px solid #f5f5f5;
-  position: relative;
-}
-
-.hot-post:last-child {
-  border-bottom: none;
-}
-
-.hot-post:hover {
-  transform: translateX(8px);
-  background: linear-gradient(90deg, rgba(102, 126, 234, 0.1), transparent);
-  border-radius: 6px;
-  padding: 8px 12px;
-  margin: 0 -12px;
-}
-
-.hot-post::after {
-  content: '';
-  position: absolute;
-  left: -8px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 4px;
-  height: 0;
-  background: #667eea;
-  border-radius: 2px;
-  transition: height 0.2s;
-}
-
-.hot-post:hover::after {
-  height: 60%;
-}
-
-.hot-post-content h4 {
-  font-size: 0.9rem;
-  color: #333;
-  font-weight: 500;
-  margin-bottom: 4px;
-  line-height: 1.3;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.hot-post-meta {
-  display: flex;
-  gap: 12px;
-  color: #666;
-  font-size: 0.8rem;
-}
-
-.hot-post-meta span {
-  display: flex;
-  align-items: center;
-  gap: 4px;
 }
 
 

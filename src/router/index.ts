@@ -1,26 +1,43 @@
+// router/index.ts
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
+import Layout from '../App.vue'  // 引入布局组件
 
 // 定义路由元信息类型
 declare module 'vue-router' {
   interface RouteMeta {
     title?: string
     requiresAuth?: boolean
+    showSidebar?: boolean
   }
 }
 
 const routes: RouteRecordRaw[] = [
   {
+    path: '/',
+    name: 'Home',
+    component: () => import('../views/Home.vue'),
+    meta: { title: '首页' },
+  },
+  {
+    path: '/posts/:id',
+    name: 'PostDetail',
+    component: () => import('../views/PostDetail.vue'),
+    meta: { title: '文章详情'}, 
+    
+  },
+  {
     path: '/about',
     name: 'About',
     component: () => import('../views/About.vue'),
-    meta: { title: '关于' }
+    meta: { title: '关于' },
   },
   {
-    path: '/:pathMatch(.*)*',
-    name: 'NotFound',
-    component: () => import('../views/NotFound.vue'),
-    meta: { title: '页面未找到' }
+    path: '/add',
+    name: 'Add',
+    component: () => import('../views/Add.vue'),
+    meta: { title: '写文章'}
   }
+
 ]
 
 const router = createRouter({
