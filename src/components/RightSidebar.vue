@@ -2,36 +2,38 @@
   <aside class="sidebar">
     <!-- 最新文章 -->
     <div class="widget">
-      <h3 class="widget-title">🆕 最新文章</h3>
+      <h3 class="widget-title">最新文章</h3>
       <ul class="recent-posts">
         <li
           v-for="post in recentPosts"
           :key="post.id"
           class="recent-post"
-          @click="viewPost(post.id)"
+          @click="$router.push(`/issues/${post.id}`)"
         >
           <div class="recent-post-content">
-            <h4>{{ post.title }}</h4>
-            <div class="recent-post-meta">
-              <span>📅 {{ formatDateShort(post.date) }}</span>
+            <h4 class="post-title">{{ post.title }}</h4>
+            <div class="post-meta">
+              <span>{{ formatDate(post.date) }}</span>
             </div>
           </div>
         </li>
       </ul>
     </div>
 
-    <!-- 文章归档 -->
+    <!-- 归档 -->
     <div class="widget">
-      <h3 class="widget-title">🗂️ 文章归档</h3>
-      <ul class="archive">
+      <h3 class="widget-title">归档</h3>
+      <ul class="archives">
         <li
-          v-for="item in archive"
-          :key="`${item.year}-${item.month}`"
+          v-for="archive in archives.slice(0, 6)"
+          :key="`${archive.year}-${archive.month}`"
           class="archive-item"
-          @click="$emit('filter-archive', item.year, item.month)"
+          @click="$emit('filter-archive', archive)"
         >
-          <span class="archive-date">{{ item.year }}年{{ item.month }}月</span>
-          <span class="archive-count">{{ item.count }}篇</span>
+          <span class="archive-date">
+            {{ archive.year }}年{{ archive.month }}月
+          </span>
+          <span class="archive-count">{{ archive.count }}</span>
         </li>
       </ul>
     </div>
@@ -39,47 +41,66 @@
 </template>
 
 <script setup lang="ts">
-import {  computed } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed} from 'vue'
 import { useBlogStore } from '../stores/post'
 
-const router = useRouter()
 const blogStore = useBlogStore()
 
-// 定义组件事件
+// 计算属性
+const posts = computed(() => blogStore.posts)
+
+const recentPosts = computed(() => {
+  return [...posts.value]
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    .slice(0, 5)
+})
+
+
+const archives = computed(() => {
+  const archiveMap: Record<string, number> = {}
+  posts.value.forEach(post => {
+    const date = new Date(post.date)
+    const year = date.getFullYear()
+    const month = date.getMonth() + 1
+    const key = `${year}-${month}`
+    
+    archiveMap[key] = (archiveMap[key] || 0) + 1
+  })
+  
+  return Object.entries(archiveMap)
+    .map(([key, count]) => {
+      const [year, month] = key.split('-')
+      return {
+        year: parseInt(year, 10),
+        month: parseInt(month, 10),
+        count
+      }
+    })
+    .sort((a, b) => {
+      if (a.year !== b.year) return b.year - a.year
+      return b.month - a.month
+    })
+})
+
+
+// 方法
+const formatDate = (dateStr: string) => {
+  const date = new Date(dateStr)
+  return `${date.getMonth() + 1}/${date.getDate()}`
+}
+
+
+// 定义 emit
 const emit = defineEmits<{
   'filter-category': [category: string]
   'filter-tag': [tag: string]
-  'filter-archive': [year: number, month: number]
-  'search': [keyword: string]
-  'create-post': []
-  'manage-posts': []
-  'export-data': []
+  'filter-archive': [archive: { year: number; month: number; count: number }]
 }>()
-
-// 计算属性
-const recentPosts = computed(() => blogStore.getRecentPosts(7))
-const archive = computed(() => blogStore.getArchive())
-
-// 方法
-const formatDateShort = (dateStr: string) => {
-  const date = new Date(dateStr)
-  return date.toLocaleDateString('zh-CN', {
-    month: 'short',
-    day: 'numeric'
-  })
-}
-
-const viewPost = (postId: number) => {
-  router.push(`/post/${postId}`)
-}
-
-
 </script>
 
 <style scoped>
 .sidebar {
- display: flex;
+  display: flex;
   flex-direction: column;
   gap: 15px;
 }
@@ -107,7 +128,6 @@ const viewPost = (postId: number) => {
   display: inline-block;
   width: 100%;
 }
-
 
 /* 最新文章 */
 .recent-posts {
@@ -241,14 +261,6 @@ const viewPost = (postId: number) => {
     position: static;
     max-height: none;
     overflow-y: visible;
-  }
-  
-  .stats-grid {
-    grid-template-columns: 1fr;
-  }
-  
-  .tags-cloud {
-    justify-content: center;
   }
 }
 </style>

@@ -18,11 +18,11 @@ const routes: RouteRecordRaw[] = [
     meta: { title: '首页' },
   },
   {
-    path: '/posts/:id',
+    path: '/issues/:id',
     name: 'PostDetail',
     component: () => import('../views/PostDetail.vue'),
     meta: { title: '文章详情'}, 
-    
+    props: true
   },
   {
     path: '/about',
@@ -33,8 +33,14 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/add',
     name: 'Add',
-    component: () => import('../views/Add.vue'),
+    component: () => import('../views/EditContent.vue'),
     meta: { title: '写文章'}
+  },
+  {
+    path: '/edit/:id',
+    name: 'EditPost',
+    component: () => import('../views/EditContent.vue'),  // 编辑模式
+    props: true
   }
 
 ]

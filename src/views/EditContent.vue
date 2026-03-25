@@ -1,7 +1,11 @@
-<!-- src/views/AddContent.vue -->
+<!-- src/views/EditContent.vue -->
 <template>
-  <div class="add-post">
-    <h2>✍️ 写新文章</h2>
+  <div class="edit-post">
+    <BackButton
+        :showText="true"
+        fallbackPath="/"
+      />
+    <h2>{{ isEditMode ? '编辑文章' : '写新文章' }}</h2>
     
     <!-- 表单 -->
     <form @submit.prevent="handleSubmit" class="post-form">
@@ -81,24 +85,10 @@
             :key="tag"
             type="button"
             class="tag-suggestion"
-            @click="addTag()"
+            @click="form.tags.push(tag)"
           >
             {{ tag }}
           </button>
-        </div>
-      </div>
-
-      <!-- 摘要 -->
-      <div class="form-group">
-        <label for="excerpt">摘要</label>
-        <textarea
-          id="excerpt"
-          v-model="form.excerpt"
-          placeholder="文章摘要，不填将自动截取内容前150字"
-          rows="3"
-        ></textarea>
-        <div class="char-count">
-          {{ form.excerpt.length }}/200
         </div>
       </div>
 
@@ -172,15 +162,16 @@
           class="btn-publish"
           :disabled="isSubmitting"
         >
-          {{ isSubmitting ? '发布中...' : '发布文章' }}
+          {{ isEditMode ? (isSubmitting ? '更新中...' : '更新文章') : (isSubmitting ? '发布中...' : '发布文章') }}
         </button>
         <button
+          v-if="isEditMode"
           type="button"
-          class="btn-reset"
+          class="btn-delete"
           :disabled="isSubmitting"
-          @click="resetForm"
+          @click="deleteArticle"
         >
-          重置
+          删除文章
         </button>
       </div>
     </form>
@@ -188,7 +179,7 @@
     <!-- 成功提示 -->
     <div v-if="successMessage" class="success-message">
       ✅ {{ successMessage }}
-      <router-link v-if="createdPost" :to="`/posts/${createdPost.id}`">
+      <router-link v-if="currentPost" :to="`/post/${currentPost.id}`">
         查看文章
       </router-link>
     </div>
@@ -197,37 +188,45 @@
     <div v-if="errorMessage" class="error-message global">
       ❌ {{ errorMessage }}
     </div>
-
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed} from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, computed, onMounted, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { marked } from 'marked'
 import { useBlogStore } from '../stores/post'
-import { isLocalAccess } from '../utils/permission'
+import BackButton from '../components/BackButton.vue'
 
+const route = useRoute()
 const router = useRouter()
 const blogStore = useBlogStore()
+
+// 状态
+const isEditMode = computed(() => {
+  return !!route.params.id
+})
+
+const postId = computed(() => {
+  return route.params.id ? parseInt(route.params.id as string, 10) : null
+})
 
 // 表单数据
 const form = ref({
   title: '',
   content: '',
-  excerpt: '',
   category: '',
   customCategory: '',
-  tags: [] as string[],
-  coverImage: ''
+  tags: [] as string[]
 })
 
 const tagInput = ref('')
 const activeTab = ref<'edit' | 'preview'>('edit')
 const isSubmitting = ref(false)
+const loading = ref(false)
 const successMessage = ref('')
 const errorMessage = ref('')
-const createdPost = ref<any>(null)
+const currentPost = ref<any>(null)
 const wordCount = ref(0)
 
 // 验证错误
@@ -237,14 +236,35 @@ const validationErrors = ref({
 })
 
 // 分类选项
-const categories = computed(() => {
-  return ['前端', '后端', '全栈', '数据库', '运维', '设计', '生活', '随笔']
-})
+const categories = [
+  '前端开发',
+  '后端开发',
+  '全栈开发',
+  '移动开发',
+  '桌面应用',
+  '游戏开发',
+  '嵌入式开发',
+  '人工智能',
+  '数据科学',
+  '区块链',
+  '云计算',
+  '物联网',
+  '大数据',
+  '网络安全',
+  '硬件开发',
+  '运维/DevOps',
+  '职业发展',
+  '兴新技术',
+  '生活与成长',
+  '随笔'
+]
 
 // 推荐标签
 const suggestedTags = computed(() => {
-  const allTags = blogStore.getAllTags().map(tag => tag.name)
-  return allTags.slice(0, 5) // 只显示前5个
+  return blogStore.posts
+    .flatMap(post => post.tags)
+    .filter((tag, index, self) => self.indexOf(tag) === index)
+    .slice(0, 5)
 })
 
 // Markdown 工具栏动作
@@ -265,6 +285,56 @@ const compiledMarkdown = computed(() => {
   return marked.parse(form.value.content || '*暂无内容*')
 })
 
+// 生命周期
+onMounted(async () => {
+  await loadInitialData()
+})
+
+// 监听路由变化
+watch(() => route.params.id, async () => {
+  await loadInitialData()
+})
+
+// 加载初始数据
+const loadInitialData = async () => {
+  // 加载文章列表
+  await blogStore.fetchPosts()
+  
+  // 如果是编辑模式，加载文章数据
+  if (isEditMode.value && postId.value) {
+    await loadArticle(postId.value)
+  }
+}
+
+// 加载文章
+const loadArticle = async (id: number) => {
+  loading.value = true
+  
+  try {
+    const post = blogStore.getPostById(id)
+    if (post) {
+      currentPost.value = post
+      form.value = {
+        title: post.title,
+        content: post.content,
+        category: post.category || '',
+        customCategory: post.category && !categories.includes(post.category) ? post.category : '',
+        tags: post.tags.filter(tag => tag !== 'blog')
+      }
+      updateWordCount()
+    } else {
+      errorMessage.value = '文章不存在'
+      setTimeout(() => {
+        router.push('/')
+      }, 2000)
+    }
+  } catch (error) {
+    console.error('加载文章失败:', error)
+    errorMessage.value = '加载文章失败'
+  } finally {
+    loading.value = false
+  }
+}
 
 // 验证表单
 const validateForm = () => {
@@ -284,18 +354,17 @@ const validateForm = () => {
     isValid = false
   }
 
+  if (!form.value.content.trim()) {
+    errorMessage.value = '文章内容不能为空'
+    isValid = false
+  }
+
   return isValid
 }
 
 // 提交表单
 const handleSubmit = async () => {
   if (!validateForm()) {
-    errorMessage.value = '请填写必填项'
-    return
-  }
-
-  if (!isLocalAccess()) {
-    errorMessage.value = '无权限发布文章'
     return
   }
 
@@ -309,108 +378,91 @@ const handleSubmit = async () => {
       ? form.value.customCategory 
       : form.value.category
 
-    // 生成摘要
-    const finalExcerpt = form.value.excerpt || 
-      form.value.content.replace(/[#*`]/g, '').substring(0, 150) + '...'
+    if (isEditMode.value && postId.value) {
+      // 编辑模式
+      const result = await blogStore.updatePost(postId.value, {
+        title: form.value.title,
+        content: form.value.content,
+        tags: form.value.tags,
+        category: finalCategory
+      })
 
-    // 创建文章
-    const newPost = blogStore.createPost({
-      title: form.value.title,
-      content: form.value.content,
-      excerpt: finalExcerpt,
-      date: new Date().toISOString().split('T')[0],
-      tags: form.value.tags,
-      author: '管理员',
-      coverImage: form.value.coverImage || undefined,
-      category: finalCategory
-    })
-
-    if (newPost) {
-      createdPost.value = newPost
-      successMessage.value = '文章发布成功！'
-      
-      // 3秒后跳转到文章页面
-      setTimeout(() => {
-        router.push(`/posts/${newPost.id}`)
-      }, 3000)
-      
-      resetForm()
+      if (result) {
+        successMessage.value = '文章更新成功！'
+        setTimeout(() => {
+          router.push(`/issues/${postId.value}`)
+        }, 2000)
+      } else {
+        errorMessage.value = '更新失败，请检查网络或权限'
+      }
     } else {
-      errorMessage.value = '发布失败，请重试'
+      // 新增模式
+      const newPost = await blogStore.createPost({
+        title: form.value.title,
+        content: form.value.content,
+        tags: form.value.tags,
+        category: finalCategory
+      })
+
+      if (newPost) {
+        currentPost.value = newPost
+        successMessage.value = '文章发布成功！'
+        
+        setTimeout(() => {
+          router.push(`/issues/${newPost.id}`)
+        }, 1000)
+      } else {
+        errorMessage.value = '发布失败，请检查网络或权限'
+      }
     }
   } catch (error) {
-    errorMessage.value = '发布失败：' + (error as Error).message
+    errorMessage.value = isEditMode.value 
+      ? '更新失败：' + (error as Error).message
+      : '发布失败：' + (error as Error).message
   } finally {
     isSubmitting.value = false
   }
 }
 
+// 删除文章
+const deleteArticle = async () => {
+  if (!postId.value || !isEditMode.value) return
+  
+  if (!confirm('确定要删除这篇文章吗？此操作不可恢复。')) {
+    return
+  }
 
-// 重置表单
-const resetForm = () => {
-  if (confirm('确定要重置表单吗？未保存的内容将丢失。')) {
-    form.value = {
-      title: '',
-      content: '',
-      excerpt: '',
-      category: '',
-      customCategory: '',
-      tags: [],
-      coverImage: ''
+  isSubmitting.value = true
+  
+  try {
+    const result = await blogStore.deletePost(postId.value)
+    
+    if (result) {
+      successMessage.value = '文章删除成功！'
+      setTimeout(() => {
+        router.push('/')
+      }, 1000)
+    } else {
+      errorMessage.value = '删除失败，请检查网络或权限'
     }
-    tagInput.value = ''
-    activeTab.value = 'edit'
-    validationErrors.value = { title: '', category: '' }
-    errorMessage.value = ''
+  } catch (error) {
+    errorMessage.value = '删除失败：' + (error as Error).message
+  } finally {
+    isSubmitting.value = false
   }
 }
 
 // 标签管理函数
 const addTag = () => {
-  try {
-    const inputValue = tagInput.value
-    
-    // 安全检查
-    if (inputValue == null || inputValue === undefined) {
-      return
-    }
-    
-    // 转换为字符串
-    const tagStr = String(inputValue).trim()
-    if (!tagStr) {
-      return
-    }
-    
-    // 清理标签
-    const cleanTag = tagStr.replace(/,+$/, '').trim()
-    if (!cleanTag) {
-      return
-    }
-    
-    // 避免重复
-    if (!form.value.tags.includes(cleanTag)) {
-      form.value.tags.push(cleanTag)
-    }
-    
-    // 清空输入框
+  const tag = tagInput.value.trim()
+  if (tag && !form.value.tags.includes(tag)) {
+    form.value.tags.push(tag)
     tagInput.value = ''
-  } catch (error) {
-    console.error('添加标签时出错:', error)
   }
 }
 
-
 const removeTag = (tag: string) => {
-  try {
-    if (typeof tag !== 'string') {
-      console.error('要删除的标签不是字符串:', tag)
-      return
-    }
-    
-    form.value.tags = form.value.tags.filter(t => t !== tag)
-  } catch (error) {
-    console.error('删除标签时出错:', error)
-  }
+  form.value.tags = form.value.tags.filter(t => t !== tag)
 }
 
 // 编辑器工具
@@ -439,16 +491,94 @@ const insertMarkdown = (prefix: string, suffix: string) => {
 }
 
 const insertImage = () => {
-  const url = prompt('请输入图片URL：')
-  if (url) {
-    const textarea = document.querySelector('.markdown-editor') as HTMLTextAreaElement
-    const start = textarea.selectionStart
-    const markdown = `![图片描述](${url})`
+  const fileInput = document.createElement('input')
+  fileInput.type = 'file'
+  fileInput.accept = 'image/*'
+  fileInput.multiple = true
+  
+  fileInput.onchange = async (e) => {
+    const files = (e.target as HTMLInputElement).files
+    if (!files || files.length === 0) return
     
-    form.value.content = 
-      form.value.content.substring(0, start) + 
-      markdown + 
-      form.value.content.substring(textarea.selectionEnd)
+    isSubmitting.value = true
+    
+    try {
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i]
+        const imageUrl = await uploadImageToGitHub(file)
+        
+        if (imageUrl) {
+          const alt = prompt(`请输入图片 ${i + 1} 的描述：`, file.name.split('.')[0])
+          const markdown = `![${alt || '图片'}](${imageUrl})`
+          insertMarkdown(markdown, '')
+        }
+      }
+    } catch (error) {
+      console.error('上传图片失败:', error)
+      alert('上传图片失败，请重试')
+    } finally {
+      isSubmitting.value = false
+    }
+  }
+  
+  fileInput.click()
+}
+
+const uploadImageToGitHub = async (file: File): Promise<string | null> => {
+  const { owner, repo, token } = blogStore.config
+  
+  if (!token) {
+    alert('请先配置 GitHub Token 以上传图片')
+    return null
+  }
+  
+  try {
+    // 生成文件名
+    const timestamp = Date.now()
+    const randomStr = Math.random().toString(36).substring(2, 8)
+    const extension = file.name.split('.').pop() || 'png'
+    const fileName = `image_${timestamp}_${randomStr}.${extension}`
+    
+    // 读取文件内容
+    const reader = new FileReader()
+    const fileContent = await new Promise<string>((resolve) => {
+      reader.onload = (e) => resolve(e.target?.result as string)
+      reader.readAsDataURL(file)
+    })
+    
+    // 提取 base64 数据
+    const base64Data = fileContent.split(',')[1]
+    
+    // 上传到 GitHub
+    const response = await fetch(
+      `https://api.github.com/repos/${owner}/${repo}/contents/images/${fileName}`,
+      {
+        method: 'PUT',
+        headers: {
+          'Authorization': `token ${token}`,
+          'Accept': 'application/vnd.github.v3+json',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          message: `Upload image: ${fileName}`,
+          content: base64Data,
+          branch: 'main'
+        })
+      }
+    )
+    
+    if (!response.ok) {
+      throw new Error('上传失败')
+    }
+    
+    const data = await response.json()
+    
+    // 返回原始 GitHub URL
+    return data.content.download_url
+    
+  } catch (error) {
+    console.error('上传图片到 GitHub 失败:', error)
+    throw error
   }
 }
 
@@ -473,11 +603,10 @@ const updateWordCount = () => {
   const english = text.match(/\b[a-zA-Z]+\b/g) || []
   wordCount.value = chinese.length + english.length
 }
-
 </script>
 
 <style scoped>
-.add-post {
+.edit-post {
   max-width: 1000px;
   margin: 0 auto;
   padding: 20px;
@@ -636,56 +765,6 @@ input.error, select.error {
 
 .tag-suggestion:hover {
   background: #e0e0e0;
-}
-
-/* 封面图片 */
-.cover-preview {
-  position: relative;
-  margin-top: 10px;
-  width: 200px;
-  height: 120px;
-  overflow: hidden;
-  border-radius: 4px;
-  border: 1px solid #eee;
-}
-
-.cover-preview img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.btn-remove-image {
-  position: absolute;
-  top: 4px;
-  right: 4px;
-  background: rgba(0, 0, 0, 0.5);
-  color: white;
-  border: none;
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  cursor: pointer;
-  font-size: 16px;
-  line-height: 1;
-}
-
-.cover-options {
-  margin-top: 10px;
-}
-
-.btn-cover-option {
-  background: #f5f5f5;
-  border: 1px solid #d9d9d9;
-  padding: 6px 12px;
-  border-radius: 4px;
-  font-size: 12px;
-  cursor: pointer;
-  transition: all 0.3s;
-}
-
-.btn-cover-option:hover {
-  background: #e6e6e6;
 }
 
 .char-count {
@@ -874,6 +953,7 @@ input.error, select.error {
   justify-content: flex-end;
   padding-top: 20px;
   border-top: 1px solid #eee;
+  flex-wrap: wrap;
 }
 
 .form-actions button {
@@ -884,17 +964,7 @@ input.error, select.error {
   cursor: pointer;
   transition: all 0.3s;
   border: 1px solid transparent;
-}
-
-.btn-save-draft {
-  background: #f5f5f5;
-  color: #666;
-  border-color: #d9d9d9;
-}
-
-.btn-save-draft:hover:not(:disabled) {
-  background: #e6e6e6;
-  border-color: #bfbfbf;
+  min-width: 100px;
 }
 
 .btn-publish {
@@ -910,13 +980,24 @@ input.error, select.error {
 
 .btn-reset {
   background: white;
-  color: #f5222d;
-  border-color: #ff4d4f;
+  color: #666;
+  border-color: #d9d9d9;
 }
 
 .btn-reset:hover:not(:disabled) {
-  background: #fff2f0;
-  border-color: #f5222d;
+  background: #f5f5f5;
+  border-color: #bfbfbf;
+}
+
+.btn-delete {
+  background: #ff4d4f;
+  color: white;
+  border-color: #ff4d4f;
+}
+
+.btn-delete:hover:not(:disabled) {
+  background: #d9363e;
+  border-color: #d9363e;
 }
 
 button:disabled {
@@ -948,80 +1029,21 @@ button:disabled {
   text-decoration: underline;
 }
 
-/* 草稿箱 */
-.drafts-section {
-  margin-top: 40px;
-  background: #fff;
-  border-radius: 8px;
-  padding: 20px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.drafts-section h3 {
-  color: #333;
-  margin-bottom: 15px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid #eee;
-}
-
-.drafts-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.draft-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 12px 16px;
-  background: #f8f9fa;
-  border-radius: 6px;
-  border: 1px solid #e9ecef;
-  cursor: pointer;
-  transition: all 0.3s;
-}
-
-.draft-item:hover {
-  background: #e9ecef;
-  border-color: #dee2e6;
-  transform: translateX(4px);
-}
-
-.draft-title {
-  font-weight: 500;
-  color: #333;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  max-width: 400px;
-}
-
-.draft-meta {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 12px;
+/* 加载状态 */
+.loading-state {
+  text-align: center;
+  padding: 50px 0;
   color: #666;
 }
 
-.btn-delete-draft {
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  border: none;
-  background: #ff4d4f;
-  color: white;
-  cursor: pointer;
-  font-size: 16px;
-  line-height: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background 0.3s;
-}
-
-.btn-delete-draft:hover {
-  background: #f5222d;
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .form-actions {
+    flex-direction: column;
+  }
+  
+  .form-actions button {
+    width: 100%;
+  }
 }
 </style>

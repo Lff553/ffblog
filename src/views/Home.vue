@@ -3,27 +3,6 @@
     <!-- 顶部横幅 -->
     <div class="hero-section">
       <div class="hero-content">
-
-        <!-- 博客统计 -->
-        <div class="hero-stats">
-          <div class="stat">
-            <span class="stat-number">{{ stats.total }}</span>
-            <span class="stat-label">文章</span>
-          </div>
-          <div class="stat">
-            <span class="stat-number">{{ stats.totalViews }}</span>
-            <span class="stat-label">阅读</span>
-          </div>
-          <div class="stat">
-            <span class="stat-number">{{ stats.totalLikes }}</span>
-            <span class="stat-label">点赞</span>
-          </div>
-          <div class="stat">
-            <span class="stat-number">{{ stats.categories }}</span>
-            <span class="stat-label">分类</span>
-          </div>
-        </div>
-        
         <!-- 搜索框 -->
         <div class="search-box">
           <input
@@ -47,7 +26,7 @@
             <!-- 分类筛选 -->
             <div class="filter-dropdown">
               <button class="filter-btn" @click="toggleCategoryDropdown">
-                📁 {{ selectedCategory || '所有分类' }}
+                {{ selectedCategory || '所有分类' }}
               </button>
               <div v-if="showCategoryDropdown" class="dropdown-content">
                 <button
@@ -76,35 +55,14 @@
               <option value="likes">最多点赞</option>
               <option value="title">标题排序</option>
             </select>
-            
-            <!-- 视图切换 -->
-            <div class="view-control">
-              <button 
-                class="view-btn" 
-                :class="{ active: viewMode === 'list' }"
-                @click="viewMode = 'list'"
-                title="列表视图"
-              >
-                📃
-              </button>
-              <button 
-                class="view-btn" 
-                :class="{ active: viewMode === 'grid' }"
-                @click="viewMode = 'grid'"
-                title="网格视图"
-              >
-                🏔️
-              </button>
-            </div>
           </div>
           
           <!-- 创建按钮 -->
           <button
-            v-if="isAdmin"
             @click="goToCreate"
             class="create-post-btn"
           >
-            ✍️ 写文章
+            写文章
           </button>
         </div>
         
@@ -129,83 +87,42 @@
         </div>
 
         <!-- 加载状态 -->
-        <div v-if="blogStore.isLoading" class="loading-state">
+        <div v-if="isLoading" class="loading-state">
           <div class="spinner"></div>
           <p>加载文章中...</p>
         </div>
 
         <!-- 文章内容 -->
         <div v-else>
-          <!-- 列表视图 -->
-          <div v-if="viewMode === 'list'" class="posts-list">
-            <article
-              v-for="post in paginatedPosts"
-              :key="post.id"
-              class="post-card list-view"
-              @click="viewPost(post.id)"
-            >
-              
-              <!-- 内容 -->
-              <div class="post-content">
-                <div class="post-header">
-                  <h2 class="post-title">{{ post.title }}</h2>
-                  <div class="post-meta">
-                    <span class="post-date">📅 {{ formatDate(post.date) }}</span>
-                  </div>
-                </div>
-                <p class="post-excerpt">{{ post.excerpt }}</p>
-                
-                <div class="post-footer">
-                  <!-- 标签 -->
-                  <div class="post-tags">
-                    <span
-                      v-for="tag in post.tags"
-                      :key="tag"
-                      class="tag"
-                      @click.stop="filterByTag(tag)"
-                    >
-                      #{{ tag }}
-                    </span>
-                  </div>
-                </div>
-                
-                <!-- 管理员操作 -->
-                <div v-if="isAdmin" class="post-actions" @click.stop>
-                  <button
-                    class="action-btn edit-btn"
-                    @click="editPost(post.id)"
-                    title="编辑"
-                  >
-                    编辑
-                  </button>
-                  <button
-                    class="action-btn delete-btn"
-                    @click="deletePost(post.id)"
-                    title="删除"
-                  >
-                    删除
-                  </button>
-                </div>
-              </div>
-            </article>
-          </div>
           
           <!-- 网格视图 -->
-          <div v-else class="posts-grid">
+          <div class="posts-grid">
             <article
               v-for="post in paginatedPosts"
               :key="post.id"
               class="post-card grid-view"
-              @click="viewPost(post.id)"
             >
-       
-              
               <!-- 内容 -->
               <div class="post-content-grid">
-                <h3 class="post-title-grid">{{ post.title }}</h3>
+                <h3 class="post-title-grid" @click="viewPost(post.id)">{{ post.title }}</h3>
                 
-                <p class="post-excerpt-grid">{{ post.excerpt }}</p>
+                <p class="post-excerpt-grid" @click="viewPost(post.id)">{{ post.excerpt }}</p>
                 
+                <!-- 元信息 -->
+                <div class="post-meta-grid">
+                  <div class="meta-left">
+                    <span>📅 {{ formatDate(post.date) }}</span>
+                  </div>
+                  <div class="meta-right">
+                    <span>👤 {{ post.author }}</span>
+                  </div>
+                </div>
+                
+                <!-- 统计 -->
+                <div class="post-stats-grid">
+                  <span class="stat">👁️ {{ post.views }}</span>
+                  <span class="stat">❤️ {{ post.likes }}</span>
+                </div>
                 
                 <!-- 标签 -->
                 <div class="post-tags-grid">
@@ -220,6 +137,24 @@
                   <span v-if="post.tags.length > 2" class="tag-more">
                     +{{ post.tags.length - 2 }}
                   </span>
+                </div>
+                
+                <!-- 操作按钮 -->
+                <div class="post-actions">
+                  <button
+                    class="edit-btn"
+                    @click.stop="editPost(post.id)"
+                    title="编辑文章"
+                  >
+                    ✏️
+                  </button>
+                  <button
+                    class="delete-btn"
+                    @click.stop="deletePost(post.id)"
+                    title="删除文章"
+                  >
+                    🗑️
+                  </button>
                 </div>
               </div>
             </article>
@@ -272,8 +207,6 @@
           </div>
         </div>
       </div>
-
-    
     </div>
   </div>
 </template>
@@ -281,14 +214,12 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { useBlogStore} from '../stores/post'
-import { isLocalAccess } from '../utils/permission'
+import { useBlogStore } from '../stores/post'
 
 const router = useRouter()
 const blogStore = useBlogStore()
 
 // 响应式数据
-const viewMode = ref<'list' | 'grid'>('list')
 const sortBy = ref<'date' | 'views' | 'likes' | 'title'>('date')
 const currentPage = ref(1)
 const postsPerPage = ref(5)
@@ -296,19 +227,72 @@ const searchKeyword = ref('')
 const selectedCategory = ref('')
 const selectedTag = ref('')
 const showCategoryDropdown = ref(false)
-
-// 检查是否是管理员
-const isAdmin = computed(() => isLocalAccess())
+const isLoading = ref(false)
 
 // 计算属性
+const posts = computed(() => blogStore.posts)
 const filteredPosts = computed(() => {
-  return blogStore.getAllPosts({
-    filterByCategory: selectedCategory.value,
-    filterByTag: selectedTag.value,
-    searchKeyword: searchKeyword.value,
-    sortBy: sortBy.value,
-    sortOrder: 'desc'
+  let filtered = [...posts.value]
+  
+  // 1. 按分类过滤
+  if (selectedCategory.value) {
+    filtered = filtered.filter(post => 
+      post.category?.toLowerCase() === selectedCategory.value.toLowerCase()
+    )
+  }
+  
+  // 2. 按标签过滤
+  if (selectedTag.value) {
+    filtered = filtered.filter(post => 
+      post.tags.some(tag => 
+        tag.toLowerCase().includes(selectedTag.value.toLowerCase())
+      )
+    )
+  }
+  
+  // 3. 搜索
+  if (searchKeyword.value) {
+    const keyword = searchKeyword.value.toLowerCase()
+    filtered = filtered.filter(post => 
+      post.title.toLowerCase().includes(keyword) ||
+      post.content.toLowerCase().includes(keyword) ||
+      post.excerpt.toLowerCase().includes(keyword) ||
+      post.tags.some(tag => tag.toLowerCase().includes(keyword)) ||
+      post.author.toLowerCase().includes(keyword) ||
+      post.category?.toLowerCase().includes(keyword)
+    )
+  }
+  
+  // 4. 排序
+  filtered.sort((a, b) => {
+    let aValue: any, bValue: any
+    
+    switch (sortBy.value) {
+      case 'date':
+        aValue = new Date(a.date).getTime()
+        bValue = new Date(b.date).getTime()
+        break
+      case 'views':
+        aValue = a.views
+        bValue = b.views
+        break
+      case 'likes':
+        aValue = a.likes
+        bValue = b.likes
+        break
+      case 'title':
+        aValue = a.title.toLowerCase()
+        bValue = b.title.toLowerCase()
+        break
+      default:
+        aValue = new Date(a.date).getTime()
+        bValue = new Date(b.date).getTime()
+    }
+    
+    return aValue > bValue ? -1 : aValue < bValue ? 1 : 0
   })
+  
+  return filtered
 })
 
 const paginatedPosts = computed(() => {
@@ -321,9 +305,19 @@ const totalPages = computed(() => {
   return Math.ceil(filteredPosts.value.length / postsPerPage.value)
 })
 
-const stats = computed(() => blogStore.getStats())
-const categories = computed(() => blogStore.getAllCategories())
-const popularPosts = computed(() => blogStore.getPopularPosts(5))
+
+// 分类
+const categories = computed(() => {
+  const catMap: Record<string, number> = {}
+  posts.value.forEach(post => {
+    if (post.category) {
+      catMap[post.category] = (catMap[post.category] || 0) + 1
+    }
+  })
+  return Object.entries(catMap)
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count)
+})
 
 // 可见页码
 const visiblePages = computed(() => {
@@ -372,35 +366,47 @@ const formatDate = (dateStr: string) => {
   })
 }
 
-
 const viewPost = (id: number) => {
-  router.push(`/post/${id}`)
-  blogStore.incrementViews(id)
+  router.push(`/issues/${id}`)
 }
 
 const editPost = (id: number) => {
-  if (!isAdmin.value) {
-    alert('无权限编辑文章')
-    return
-  }
   router.push(`/edit/${id}`)
 }
 
 const deletePost = async (id: number) => {
-  if (!isAdmin.value) {
-    alert('无权限删除文章')
+  if (!confirm('确定要删除这篇文章吗？此操作会将文章关闭，不可恢复。')) {
     return
   }
   
-  if (confirm('确定要删除这篇文章吗？')) {
-    const success = blogStore.deletePost(id)
-    if (success) {
-      alert('文章已删除')
-      resetToFirstPage()
+  try {
+    const result = await blogStore.deletePost(id)
+    
+    if (result) {
+      // 显示成功提示
+      showSuccessMessage('文章删除成功！')
+      
+      // 检查是否需要调整页码
+      if (filteredPosts.value.length === 0 && currentPage.value > 1) {
+        currentPage.value--
+      }
     } else {
-      alert('删除失败')
+      showErrorMessage('删除失败，请检查网络或权限')
     }
+  } catch (error) {
+    console.error('删除文章失败:', error)
+    showErrorMessage('删除失败，请重试')
   }
+}
+
+// 添加成功/错误提示
+const showSuccessMessage = (message: string) => {
+  // 可以在这里添加一个 Toast 提示组件
+  alert(message)
+}
+
+const showErrorMessage = (message: string) => {
+  alert(message)
 }
 
 const filterByTag = (tag: string) => {
@@ -488,14 +494,18 @@ const handleClickOutside = (event: MouseEvent) => {
 }
 
 // 生命周期
-onMounted(() => {
+onMounted(async () => {
   document.addEventListener('click', handleClickOutside)
   
-  // 初始化数据
-  console.log('首页加载完成')
-  console.log('文章总数:', stats.value.total)
-  console.log('分类:', categories.value)
-  console.log('热门文章:', popularPosts.value)
+  // 加载文章
+  isLoading.value = true
+  try {
+    await blogStore.fetchPosts()
+  } catch (error) {
+    console.error('加载文章失败:', error)
+  } finally {
+    isLoading.value = false
+  }
 })
 
 // 监听筛选条件变化
@@ -513,7 +523,6 @@ watch(currentPage, () => {
 .home-page {
   min-height: 100vh;
   background: #f8f9fa;
-  
 }
 
 /* 顶部横幅 */
@@ -530,34 +539,6 @@ watch(currentPage, () => {
   margin: 0 auto;
 }
 
-
-.hero-stats {
-  display: flex;
-  justify-content: center;
-  gap: 40px;
-  margin-bottom: 30px;
-  flex-wrap: wrap;
-}
-
-.stat {
-  text-align: center;
-}
-
-.stat-number {
-  display: block;
-  font-size: 1rem;
-  font-weight: 700;
-  line-height: 1;
-  margin-bottom: 4px;
-}
-
-.stat-label {
-  font-size: 0.9rem;
-  opacity: 0.9;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-}
-
 .search-box {
   position: relative;
   max-width: 500px;
@@ -565,7 +546,7 @@ watch(currentPage, () => {
 }
 
 .search-input {
-  width: 95%;
+  width: 100%;
   padding: 16px 24px;
   padding-right: 50px;
   border: none;
@@ -725,39 +706,6 @@ watch(currentPage, () => {
   border-color: #667eea;
 }
 
-.view-control {
-  display: flex;
-  background: #f5f5f5;
-  border-radius: 8px;
-  padding: 4px;
-}
-
-.view-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 8px 12px;
-  background: transparent;
-  border: none;
-  border-radius: 6px;
-  color: #666;
-  font-size: 1.2rem;
-  cursor: pointer;
-  transition: all 0.2s;
-  min-width: 40px;
-}
-
-.view-btn:hover {
-  background: rgba(102, 126, 234, 0.1);
-  color: #667eea;
-}
-
-.view-btn.active {
-  background: #667eea;
-  color: white;
-  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
-}
-
 .create-post-btn {
   padding: 10px 20px;
   background: linear-gradient(135deg, #667eea, #764ba2);
@@ -885,13 +833,7 @@ watch(currentPage, () => {
   font-size: 0.9rem;
 }
 
-/* 文章列表 */
-.posts-list {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
+/* 网格视图样式 */
 .posts-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
@@ -913,215 +855,10 @@ watch(currentPage, () => {
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
 }
 
-/* 列表视图样式 */
-.post-card.list-view {
-  display: flex;
-  gap: 20px;
-  padding: 20px;
-}
-
-.post-cover {
-  flex: 0 0 200px;
-  position: relative;
-  border-radius: 8px;
-  overflow: hidden;
-  height: 150px;
-}
-
-.post-cover img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  transition: transform 0.3s;
-}
-
-.post-card.list-view:hover .post-cover img {
-  transform: scale(1.05);
-}
-
-.category-badge {
-  position: absolute;
-  top: 10px;
-  left: 10px;
-  padding: 4px 12px;
-  background: rgba(0, 0, 0, 0.7);
-  color: white;
-  border-radius: 20px;
-  font-size: 0.75rem;
-  font-weight: 500;
-  backdrop-filter: blur(4px);
-}
-
-.post-content {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-
-.post-header {
-  margin-bottom: 12px;
-}
-
-.post-title {
-  font-size: 1.5rem;
-  color: #333;
-  font-weight: 600;
-  margin-bottom: 8px;
-  line-height: 1.3;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.post-meta {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-  color: #666;
-  font-size: 0.85rem;
-}
-
-.post-excerpt {
-  flex: 1;
-  color: #666;
-  line-height: 1.6;
-  margin-bottom: 16px;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.post-footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding-top: 10px;
-  border-top: 1px solid #f0f0f0;
-}
-
-.post-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.tag {
-  display: inline-block;
-  padding: 4px 10px;
-  background: #f5f5f5;
-  color: #666;
-  border-radius: 12px;
-  font-size: 0.8rem;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.tag:hover {
-  background: #667eea;
-  color: white;
-  transform: translateY(-1px);
-}
-
-.post-stats {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-  color: #666;
-  font-size: 0.85rem;
-}
-
-.stat {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.stat-icon {
-  font-size: 0.9em;
-}
-
-.stat-number {
-  font-weight: 500;
-}
-
-.post-actions {
-  margin-top: 10px;
-  display: flex;
-  gap: 10px;
-  padding-top: 16px;
-  border-top: 1px solid #f0f0f0;
-}
-
-.action-btn {
-  padding: 8px 16px;
-  border: none;
-  border-radius: 6px;
-  font-size: 0.85rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-  min-width: 60px;
-}
-
-.edit-btn {
-  background: #667eea;
-  color: white;
-}
-
-.edit-btn:hover {
-  background: #5a6fd8;
-  transform: translateY(-1px);
-}
-
-.delete-btn {
-  background: #f56565;
-  color: white;
-}
-
-.delete-btn:hover {
-  background: #e53e3e;
-  transform: translateY(-1px);
-}
-
-/* 网格视图样式 */
 .post-card.grid-view {
   display: flex;
   flex-direction: column;
   height: 100%;
-}
-
-.post-cover-grid {
-  position: relative;
-  height: 180px;
-  overflow: hidden;
-  background: #f5f5f5;
-}
-
-.post-cover-grid img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  transition: transform 0.3s;
-}
-
-.post-card.grid-view:hover .post-cover-grid img {
-  transform: scale(1.05);
-}
-
-.cover-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(to bottom, transparent 50%, rgba(0, 0, 0, 0.3));
-  padding: 10px;
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
 }
 
 .post-content-grid {
@@ -1141,6 +878,12 @@ watch(currentPage, () => {
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.post-title-grid:hover {
+  color: #667eea;
 }
 
 .post-excerpt-grid {
@@ -1153,6 +896,12 @@ watch(currentPage, () => {
   -webkit-box-orient: vertical;
   overflow: hidden;
   font-size: 0.9rem;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.post-excerpt-grid:hover {
+  color: #333;
 }
 
 .post-meta-grid {
@@ -1170,6 +919,14 @@ watch(currentPage, () => {
   gap: 8px;
 }
 
+.post-stats-grid {
+  display: flex;
+  gap: 15px;
+  margin-bottom: 12px;
+  font-size: 0.85rem;
+  color: #666;
+}
+
 .post-tags-grid {
   display: flex;
   flex-wrap: wrap;
@@ -1178,10 +935,75 @@ watch(currentPage, () => {
   margin-bottom: 16px;
 }
 
+.tag {
+  display: inline-block;
+  padding: 4px 10px;
+  background: #f5f5f5;
+  color: #666;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-weight: 500;
+  font-size: 0.8rem;
+}
+
+.tag:hover {
+  background: #667eea;
+  color: white;
+  transform: translateY(-2px);
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
+
 .tag-more {
   color: #999;
   font-size: 0.8rem;
   padding: 3px 8px;
+}
+
+/* 操作按钮 */
+.post-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  padding-top: 12px;
+  border-top: 1px solid #f0f0f0;
+  margin-top: 8px;
+}
+
+.edit-btn,
+.delete-btn {
+  padding: 6px 12px;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: white;
+}
+
+.edit-btn {
+  color: #1890ff;
+  border-color: #91d5ff;
+}
+
+.edit-btn:hover {
+  background: #e6f7ff;
+  border-color: #1890ff;
+  transform: translateY(-1px);
+}
+
+.delete-btn {
+  color: #ff4d4f;
+  border-color: #ffccc7;
+}
+
+.delete-btn:hover {
+  background: #fff2f0;
+  border-color: #ff4d4f;
+  transform: translateY(-1px);
 }
 
 /* 空状态 */
@@ -1299,234 +1121,24 @@ watch(currentPage, () => {
   margin-left: auto;
 }
 
-/* 侧边栏 */
-.sidebar {
-  flex: 0 0 300px;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  position: sticky;
-  top: 20px;
-  height: fit-content;
-  max-height: calc(100vh - 40px);
-  overflow-y: auto;
-}
-
-.widget {
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  padding: 20px;
-}
-
-.widget-title {
-  font-size: 1.1rem;
-  color: #333;
-  font-weight: 600;
-  margin-bottom: 20px;
-  padding-bottom: 10px;
-  border-bottom: 2px solid #667eea;
-  display: inline-block;
-}
-
-/* 热门文章 */
-.hot-posts {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.hot-post {
-  display: flex;
-  gap: 12px;
-  cursor: pointer;
-  transition: all 0.2s;
-  padding: 8px 0;
-  border-bottom: 1px solid #f5f5f5;
-}
-
-.hot-post:last-child {
-  border-bottom: none;
-}
-
-.hot-post:hover {
-  transform: translateX(4px);
-  background: #f8f9fa;
-  border-radius: 6px;
-  padding: 8px;
-  margin: 0 -8px;
-}
-
-.hot-post-content h4 {
-  font-size: 0.9rem;
-  color: #333;
-  font-weight: 500;
-  margin-bottom: 4px;
-  line-height: 1.3;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.hot-post-meta {
-  display: flex;
-  gap: 12px;
-  color: #666;
-  font-size: 0.8rem;
-}
-
-/* 分类 */
-.categories {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.category-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 8px 12px;
-  cursor: pointer;
-  border-radius: 6px;
-  transition: all 0.2s;
-}
-
-.category-item:hover {
-  background: #f0f2ff;
-  color: #667eea;
-  transform: translateX(4px);
-}
-
-.category-name {
-  font-size: 0.9rem;
-  font-weight: 500;
-}
-
-.category-count {
-  font-size: 0.8rem;
-  color: #999;
-  background: #f5f5f5;
-  padding: 2px 8px;
-  border-radius: 10px;
-}
-
-.category-item:hover .category-count {
-  background: #d9dfff;
-  color: #667eea;
-}
-
-/* 标签云 */
-.tags-cloud {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.tag-cloud {
-  display: inline-block;
-  padding: 4px 10px;
-  background: #f5f5f5;
-  color: #666;
-  border-radius: 20px;
-  cursor: pointer;
-  transition: all 0.2s;
-  font-weight: 500;
-}
-
-.tag-cloud:hover {
-  background: #667eea;
-  color: white;
-  transform: translateY(-2px);
-  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
-}
-
-/* 最新文章 */
-.recent-posts {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.recent-post {
-  cursor: pointer;
-  transition: all 0.2s;
-  padding: 8px 0;
-  border-bottom: 1px solid #f5f5f5;
-}
-
-.recent-post:last-child {
-  border-bottom: none;
-}
-
-.recent-post:hover {
-  transform: translateX(4px);
-  background: #f8f9fa;
-  border-radius: 6px;
-  padding: 8px;
-  margin: 0 -8px;
-}
-
-.recent-post-content h4 {
-  font-size: 0.9rem;
-  color: #333;
-  font-weight: 500;
-  margin-bottom: 4px;
-  line-height: 1.3;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.recent-post-meta {
-  color: #666;
-  font-size: 0.8rem;
-}
-
 /* 响应式设计 */
 @media (max-width: 1200px) {
   .main-content {
     flex-direction: column;
   }
   
-  .sidebar {
-    flex: none;
+  .container {
     width: 100%;
-    position: static;
-    max-height: none;
   }
   
   .hero-stats {
     gap: 30px;
-  }
-  
-  .stat-number {
-    font-size: 2rem;
   }
 }
 
 @media (max-width: 768px) {
   .hero-section {
     padding: 40px 20px;
-  }
-  
-  .hero-title {
-    font-size: 2.5rem;
-  }
-  
-  .hero-subtitle {
-    font-size: 1.1rem;
   }
   
   .content-controls {
@@ -1537,23 +1149,6 @@ watch(currentPage, () => {
   
   .create-post-btn {
     align-self: center;
-  }
-  
-  .post-card.list-view {
-    flex-direction: column;
-  }
-  
-  .post-cover {
-    flex: none;
-    height: 200px;
-  }
-  
-  .hero-stats {
-    gap: 20px;
-  }
-  
-  .stat-number {
-    font-size: 1.8rem;
   }
   
   .pagination {
@@ -1567,10 +1162,6 @@ watch(currentPage, () => {
 }
 
 @media (max-width: 480px) {
-  .hero-title {
-    font-size: 2rem;
-  }
-  
   .filters {
     flex-direction: column;
     align-items: stretch;
@@ -1583,14 +1174,6 @@ watch(currentPage, () => {
   
   .posts-grid {
     grid-template-columns: 1fr;
-  }
-  
-  .hero-stats {
-    gap: 15px;
-  }
-  
-  .stat-number {
-    font-size: 1.5rem;
   }
 }
 </style>

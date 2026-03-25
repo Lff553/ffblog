@@ -1,211 +1,110 @@
 import { defineStore } from 'pinia'
-import { ref, watch } from 'vue'
-import { isLocalAccess } from '../utils/permission'
+import { ref, computed } from 'vue'
 
 // 文章接口
 export interface Post {
-  id: number// 文章ID
-  title: string// 文章标题
-  content: string// 文章内容
-  excerpt: string// 文章摘要
-  date: string// 文章日期
-  tags: string[]// 文章标签
-  author: string// 文章作者
-  views: number// 文章阅读量
-  likes: number// 文章点赞量
-  coverImage?: string// 文章封面图片
-  category?: string// 文章分类
-  createdAt: string// 文章创建时间
-  updatedAt?: string// 文章更新时间
+  id: number
+  title: string
+  content: string
+  excerpt: string
+  date: string
+  tags: string[]
+  author: string
+  views: number
+  likes: number
+  category?: string
+  createdAt: string
+  updatedAt?: string
+  state: 'open' | 'closed'
 }
 
-export const useBlogStore = defineStore('blog', () => {
-  // 从 localStorage 加载初始数据
-  const loadFromStorage = (): Post[] => {
-    try {
-      const stored = localStorage.getItem('blog-posts')
-      if (stored) {
-        return JSON.parse(stored)
-      }
-    } catch (error) {
-      console.error('加载存储失败:', error)
-    }
-    return []
-  }
+export const useBlogStore = defineStore('github', () => {
+  // 配置信息
+  const config = ref({
+    owner: 'Lff553',
+    repo: 'ffblog',
+    issueLabel: 'blog',
+    token: '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'
+  })
 
-  // 保存到 localStorage
-  const saveToStorage = (posts: Post[]) => {
-    try {
-      localStorage.setItem('blog-posts', JSON.stringify(posts))
-    } catch (error) {
-      console.error('保存到存储失败:', error)
-    }
-  }
-
-
-  // 状态 - 从存储加载，如果没有则使用初始数据
-  const storedPosts = loadFromStorage()
-  const posts = ref<Post[]>(storedPosts.length > 0 ? storedPosts : [])
-  
+  // 状态
+  const posts = ref<Post[]>([])
   const isLoading = ref(false)
   const error = ref<string | null>(null)
 
-  // 监听 posts 变化，自动保存
-  watch(
-    posts,
-    (newPosts) => {
-      saveToStorage(newPosts)
-    },
-    { deep: true }  // 深度监听，确保对象内部变化也会触发保存
-  )
+  // 从 GitHub 获取所有文章
+  const fetchPosts = async () => {
+    isLoading.value = true
+    error.value = null
 
-  // 获取所有文章的方法
-  const getAllPosts = (options?: {
-    includeDrafts?: boolean
-    filterByCategory?: string
-    filterByTag?: string
-    searchKeyword?: string
-    sortBy?: 'date' | 'views' | 'likes' | 'title'
-    sortOrder?: 'asc' | 'desc'
-  }): Post[] => {
-    let filteredPosts = [...posts.value]
-    
-    const {
-      filterByCategory,
-      filterByTag,
-      searchKeyword,
-      sortBy = 'date',
-      sortOrder = 'desc'
-    } = options || {}
-    
-    // 1. 按分类过滤
-    if (filterByCategory) {
-      filteredPosts = filteredPosts.filter(post => 
-        post.category?.toLowerCase() === filterByCategory.toLowerCase()
-      )
-    }
-    
-    // 2. 按标签过滤
-    if (filterByTag) {
-      filteredPosts = filteredPosts.filter(post => 
-        post.tags.some(tag => 
-          tag.toLowerCase().includes(filterByTag.toLowerCase())
-        )
-      )
-    }
-    
-    // 3. 搜索
-    if (searchKeyword) {
-      const keyword = searchKeyword.toLowerCase()
-      filteredPosts = filteredPosts.filter(post => 
-        post.title.toLowerCase().includes(keyword) ||
-        post.content.toLowerCase().includes(keyword) ||
-        post.excerpt.toLowerCase().includes(keyword) ||
-        post.tags.some(tag => tag.toLowerCase().includes(keyword)) ||
-        post.author.toLowerCase().includes(keyword) ||
-        post.category?.toLowerCase().includes(keyword)
-      )
-    }
-    
-    // 4. 排序
-    filteredPosts.sort((a, b) => {
-      let aValue: any, bValue: any
+    try {
+      const { owner, repo, token, issueLabel } = config.value
+      const url = `https://api.github.com/repos/${owner}/${repo}/issues?labels=${issueLabel}&per_page=100&state=all`
       
-      switch (sortBy) {
-        case 'date':
-          aValue = new Date(a.date).getTime()
-          bValue = new Date(b.date).getTime()
-          break
-        case 'views':
-          aValue = a.views
-          bValue = b.views
-          break
-        case 'likes':
-          aValue = a.likes
-          bValue = b.likes
-          break
-        case 'title':
-          aValue = a.title.toLowerCase()
-          bValue = b.title.toLowerCase()
-          break
-        default:
-          aValue = new Date(a.date).getTime()
-          bValue = new Date(b.date).getTime()
-      }
-      
-      if (sortOrder === 'asc') {
-        return aValue < bValue ? -1 : aValue > bValue ? 1 : 0
-      } else {
-        return aValue > bValue ? -1 : aValue < bValue ? 1 : 0
-      }
-    })
-    
-    return filteredPosts
-  }
-
-  // 获取文章数量
-  const getPostCount = (options?: {
-    includeDrafts?: boolean
-    filterByCategory?: string
-    filterByTag?: string
-  }): number => {
-    return getAllPosts(options).length
-  }
-  
-  // 获取最新的文章
-  const getRecentPosts = (limit: number = 5): Post[] => {
-    return getAllPosts({ sortBy: 'date', sortOrder: 'desc' }).slice(0, limit)
-  }
-  
-  // 获取热门文章
-  const getPopularPosts = (limit: number = 5): Post[] => {
-    return getAllPosts({ sortBy: 'views', sortOrder: 'desc' }).slice(0, limit)
-  }
-  
-  // 获取文章的所有分类
-  const getAllCategories = (): Array<{ name: string; count: number }> => {
-    const categories: Record<string, number> = {}
-    
-    getAllPosts().forEach(post => {
-      if (post.category) {
-        categories[post.category] = (categories[post.category] || 0) + 1
-      }
-    })
-    
-    return Object.entries(categories)
-      .map(([name, count]) => ({ name, count }))
-      .sort((a, b) => b.count - a.count)
-  }
-  
-  // 获取所有标签
-  const getAllTags = (): Array<{ name: string; count: number }> => {
-    const tags: Record<string, number> = {}
-    
-    getAllPosts().forEach(post => {
-      post.tags.forEach(tag => {
-        tags[tag] = (tags[tag] || 0) + 1
+      const response = await fetch(url, {
+        headers: {
+          'Accept': 'application/vnd.github.v3+json',
+          'Authorization': token ? `token ${token}` : '',
+          'User-Agent': 'GitHub-Blog-Client'
+        }
       })
-    })
-    
-    return Object.entries(tags)
-      .map(([name, count]) => ({ name, count }))
-      .sort((a, b) => b.count - a.count)
+
+      if (!response.ok) {
+        throw new Error('获取文章失败')
+      }
+
+      const issues = await response.json()
+      const openIssues = issues.filter((issue: any) => issue.state === 'open')
+      
+      // 转换为 Post 格式
+      posts.value = openIssues.map((issue: any) => ({
+        id: issue.number,
+        title: issue.title,
+        content: issue.body || '',
+        excerpt: (issue.body || '').substring(0, 150) + '...',
+        date: issue.created_at,
+        tags: issue.labels.map((label: any) => label.name),
+        author: issue.user.login,
+        views: issue.reactions?.['+1'] || 0,
+        likes: issue.reactions?.['heart'] || 0,
+        category: issue.labels.find((label: any) => label.name !== 'blog')?.name,
+        createdAt: issue.created_at,
+        updatedAt: issue.updated_at,
+        state: issue.state
+      }))
+
+      return posts.value
+      
+    } catch (err) {
+      error.value = '获取文章失败'
+      console.error('获取文章失败:', err)
+      return []
+    } finally {
+      isLoading.value = false
+    }
   }
-  
-  // 获取文章归档
-  const getArchive = (): Array<{ year: number; month: number; count: number }> => {
-    const archive: Record<string, number> = {}
+
+  // 计算属性：获取最新文章
+  const getRecentPosts = computed(() => (limit: number = 7) => {
+    return [...posts.value]
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+      .slice(0, limit)
+  })
+
+  // 计算属性：获取文章归档
+  const getArchive = computed(() => {
+    const archiveMap: Record<string, number> = {}
     
-    getAllPosts().forEach(post => {
+    posts.value.forEach(post => {
       const date = new Date(post.date)
       const year = date.getFullYear()
       const month = date.getMonth() + 1
-      const key = `${year}-${month.toString().padStart(2, '0')}`
+      const key = `${year}-${month}`
       
-      archive[key] = (archive[key] || 0) + 1
+      archiveMap[key] = (archiveMap[key] || 0) + 1
     })
     
-    return Object.entries(archive)
+    return Object.entries(archiveMap)
       .map(([key, count]) => {
         const [year, month] = key.split('-')
         return {
@@ -218,140 +117,188 @@ export const useBlogStore = defineStore('blog', () => {
         if (a.year !== b.year) return b.year - a.year
         return b.month - a.month
       })
+  })
+
+  // 搜索文章
+  const searchPosts = (keyword: string): Post[] => {
+    if (!keyword.trim()) return posts.value
+    
+    const searchTerm = keyword.toLowerCase()
+    return posts.value.filter(post => 
+      post.title.toLowerCase().includes(searchTerm) ||
+      post.content.toLowerCase().includes(searchTerm) ||
+      post.tags.some(tag => tag.toLowerCase().includes(searchTerm))
+    )
   }
-  
-  // 按ID获取文章
+
+  // 获取单篇文章
   const getPostById = (id: number): Post | undefined => {
     return posts.value.find(post => post.id === id)
   }
-  
-  // 按标签获取文章
-  const getPostsByTag = (tag: string): Post[] => {
-    return getAllPosts({ filterByTag: tag })
-  }
-  
-  // 按分类获取文章
-  const getPostsByCategory = (category: string): Post[] => {
-    return getAllPosts({ filterByCategory: category })
-  }
-  
-  // 搜索文章
-  const searchPosts = (keyword: string): Post[] => {
-    return getAllPosts({ searchKeyword: keyword })
-  }
-  
-  // 创建文章（需要本地权限）
-  const createPost = (postData: Omit<Post, 'id' | 'views' | 'likes' | 'createdAt' | 'updatedAt'>): Post | null => {
-    if (!isLocalAccess()) {
-      console.error('无权限创建文章')
+
+  // 创建文章
+  const createPost = async (postData: {
+    title: string
+    content: string
+    tags?: string[]
+    category?: string
+  }): Promise<Post | null> => {
+    const { owner, repo, token, issueLabel } = config.value
+    
+    try {
+      const labels = [issueLabel]
+      if (postData.category) labels.push(postData.category)
+      if (postData.tags) labels.push(...postData.tags)
+      
+      // 修正URL
+      const url = `https://api.github.com/repos/${owner}/${repo}/issues`
+      
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Accept': 'application/vnd.github.v3+json',
+          'Content-Type': 'application/json',
+          'Authorization': `token ${token}`
+        },
+        body: JSON.stringify({
+          title: postData.title,
+          body: postData.content,
+          labels: Array.from(new Set(labels))
+        })
+      })
+      
+      if (!response.ok) {
+        throw new Error('创建文章失败')
+      }
+      
+      const issue = await response.json()
+      const newPost: Post = {
+        id: issue.number,
+        title: issue.title,
+        content: issue.body || '',
+        excerpt: (issue.body || '').substring(0, 150) + '...',
+        date: issue.created_at,
+        tags: issue.labels.map((label: any) => label.name),
+        author: issue.user.login,
+        views: 0,
+        likes: 0,
+        category: issue.labels.find((label: any) => label.name !== 'blog')?.name,
+        createdAt: issue.created_at,
+        state: issue.state
+      }
+      
+      posts.value.unshift(newPost)
+      return newPost
+      
+    } catch (err) {
+      error.value = '创建文章失败'
+      console.error('创建文章失败:', err)
       return null
     }
-    
-    const now = new Date().toISOString()
-    const nextId = posts.value.length > 0 ? Math.max(...posts.value.map(post => post.id)) + 1 : 1
-    const newPost: Post = {
-      ...postData,
-      id: nextId,
-      views: 0,
-      likes: 0,
-      createdAt: now
-    }
-    
-    posts.value.unshift(newPost)
-    return newPost
   }
-  
-  // 更新文章（需要本地权限）
-  const updatePost = (id: number, updates: Partial<Omit<Post, 'id'>>): boolean => {
-    if (!isLocalAccess()) {
-      console.error('无权限更新文章')
-      return false
-    }
-    
-    const index = posts.value.findIndex(post => post.id === id)
-    if (index === -1) {
-      return false
-    }
-    
-    posts.value[index] = { 
-      ...posts.value[index], 
-      ...updates,
-      updatedAt: new Date().toISOString()
-    }
-    return true
-  }
-  
-  // 删除文章（需要本地权限）
-  const deletePost = (id: number): boolean => {
-    if (!isLocalAccess()) {
-      console.error('无权限删除文章')
-      return false
-    }
-    
-    const initialLength = posts.value.length
-    posts.value = posts.value.filter(post => post.id !== id)
-    return posts.value.length < initialLength
-  }
-  
-  // 增加阅读量
-  const incrementViews = (id: number): void => {
-    const post = getPostById(id)
-    if (post) {
-      post.views++
-    }
-  }
-  
-  // 点赞文章
-  const likePost = (id: number): void => {
-    const post = getPostById(id)
-    if (post) {
-      post.likes++
-    }
-  }
-  
-  // 获取统计信息
-  const getStats = () => {
-    const allPosts = getAllPosts()
 
-    return {
-      total: allPosts.length,
-      totalViews: allPosts.reduce((sum, post) => sum + post.views, 0),
-      totalLikes: allPosts.reduce((sum, post) => sum + post.likes, 0),
-      categories: getAllCategories().length,
-      tags: getAllTags().length
+  // 更新文章
+  const updatePost = async (id: number, updates: {
+    title?: string
+    content?: string
+    tags?: string[]
+    category?: string
+    state?: 'open' | 'closed'
+  }): Promise<boolean> => {
+    const { owner, repo, token, issueLabel } = config.value
+    const post = getPostById(id)
+    
+    if (!post) return false
+    
+    try {
+      const currentLabels = post.tags.filter(tag => tag !== issueLabel)
+      const labels = [issueLabel]
+      if (updates.category) labels.push(updates.category)
+      if (updates.tags) labels.push(...updates.tags)
+      else labels.push(...currentLabels)
+      
+      // 修正URL
+      const url = `https://api.github.com/repos/${owner}/${repo}/issues/${id}`
+      
+      const response = await fetch(url, {
+        method: 'PATCH',
+        headers: {
+          'Accept': 'application/vnd.github.v3+json',
+          'Content-Type': 'application/json',
+          'Authorization': `token ${token}`
+        },
+        body: JSON.stringify({
+          title: updates.title || post.title,
+          body: updates.content || post.content,
+          labels: Array.from(new Set(labels)),
+          state: updates.state || post.state
+        })
+      })
+      
+      if (!response.ok) {
+        throw new Error('更新文章失败')
+      }
+      
+      await fetchPosts() // 重新获取最新数据
+      return true
+      
+    } catch (err) {
+      error.value = '更新文章失败'
+      console.error('更新文章失败:', err)
+      return false
     }
   }
 
-  
+  // 删除文章
+  const deletePost = async (id: number): Promise<boolean> => {
+    const { owner, repo, token } = config.value
+    
+    try {
+      const url = `https://api.github.com/repos/${owner}/${repo}/issues/${id}`
+      
+      const response = await fetch(url, {
+        method: 'PATCH',
+        headers: {
+          'Accept': 'application/vnd.github.v3+json',
+          'Content-Type': 'application/json',
+          'Authorization': `token ${token}`
+        },
+        body: JSON.stringify({
+          state: 'closed'
+        })
+      })
+      
+      if (!response.ok) {
+        throw new Error('删除文章失败')
+      }
+      
+      posts.value = posts.value.filter(post => post.id !== id)
+      return true
+      
+    } catch (err) {
+      error.value = '删除文章失败'
+      console.error('删除文章失败:', err)
+      return false
+    }
+  }
+
   return {
     // 状态
     posts,
     isLoading,
     error,
+    config,
     
-    // 主要方法
-    getAllPosts,
-    getPostCount,
-    getRecentPosts,
-    getPopularPosts,
-    getAllCategories,
-    getAllTags,
-    getArchive,
-    
-    // 单个文章操作
+    // 基本操作
+    fetchPosts,
     getPostById,
-    getPostsByTag,
-    getPostsByCategory,
     searchPosts,
-    
-    // 文章管理
     createPost,
     updatePost,
     deletePost,
-    incrementViews,
-    likePost,
     
-    // 统计和工具
-    getStats
+    // 新增的侧边栏需要的方法
+    getRecentPosts: getRecentPosts.value, // 计算属性值
+    getArchive: getArchive.value // 计算属性值
   }
 })

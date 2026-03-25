@@ -2,32 +2,20 @@
   <div class="left-sidebar-container">
     <div class="author-card">
       <div class="author-avatar">
-        <img src="../assets/avatar.jpg" alt="作者头像" />
+        <img :src="authorAvatar" alt="作者头像" />
       </div>
       <h3 class="author-name">程序员FF</h3>
-      <p class="author-bio">专注前端开发 | Vue专家 | 技术分享者</p>
-      
       <div class="author-stats">
         <div class="stat-item">
-          <span class="stat-number">128</span>
+          <span class="stat-number">{{ totalPosts }}</span>
           <span class="stat-label">文章</span>
         </div>
-        <div class="stat-item">
-          <span class="stat-number">5.2K</span>
-          <span class="stat-label">粉丝</span>
-        </div>
-        <div class="stat-item">
-          <span class="stat-number">3年</span>
-          <span class="stat-label">经验</span>
-        </div>
       </div>
-      
-      <button class="follow-btn">关注</button>
     </div>
     
-        <!-- 分类 -->
+    <!-- 分类 -->
     <div class="widget">
-      <h3 class="widget-title">📁 分类</h3>
+      <h3 class="widget-title">分类</h3>
       <ul class="categories">
         <li
           v-for="cat in categories.slice(0, 8)"
@@ -43,58 +31,105 @@
 
     <!-- 标签云 -->
     <div class="widget">
-      <h3 class="widget-title">🏷️ 标签</h3>
+      <h3 class="widget-title">标签</h3>
       <div class="tags-cloud">
         <span
           v-for="tag in tags.slice(0, 15)"
           :key="tag.name"
           class="tag-cloud"
-          :style="{ fontSize: `${0.8 + (tag.count / 10)}em` }"
+          :style="{ 
+            fontSize: `${0.8 + Math.min(tag.count / 10, 1)}em`,
+            opacity: `${0.7 + Math.min(tag.count / 20, 0.3)}`
+          }"
           @click="$emit('filter-tag', tag.name)"
         >
           {{ tag.name }}
         </span>
       </div>
     </div>
-    
+
+   
   </div>
 </template>
 
 <script setup lang="ts">
-import {  computed } from 'vue'
+import { computed } from 'vue'
 import { useBlogStore } from '../stores/post'
 
 const blogStore = useBlogStore()
-
-
+const authorAvatar = computed(() => {
+  return `https://avatars.githubusercontent.com/${blogStore.config.owner}`
+})
 // 计算属性
-const categories = computed(() => blogStore.getAllCategories())
-const tags = computed(() => blogStore.getAllTags())
+const posts = computed(() => blogStore.posts)
+const categories = computed(() => {
+  const catMap: Record<string, number> = {}
+  posts.value.forEach(post => {
+    if (post.category) {
+      catMap[post.category] = (catMap[post.category] || 0) + 1
+    }
+  })
+  return Object.entries(catMap)
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count)
+})
 
+const tags = computed(() => {
+  const tagMap: Record<string, number> = {}
+  posts.value.forEach(post => {
+    post.tags.forEach(tag => {
+      tagMap[tag] = (tagMap[tag] || 0) + 1
+    })
+  })
+  return Object.entries(tagMap)
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count)
+})
+
+const totalPosts = computed(() => posts.value.length)
+// 定义 emit
+const emit = defineEmits<{
+  'filter-category': [category: string]
+  'filter-tag': [tag: string]
+  'filter-archive': [archive: { year: number; month: number; count: number }]
+}>()
 </script>
-
 
 <style scoped>
 .left-sidebar-container {
   display: flex;
   flex-direction: column;
-  gap: 15px;
+  gap: 20px;
+  width: 100%;
 }
-
 
 /* 作者卡片 */
 .author-card {
-  background: white;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   border-radius: 12px;
   padding: 25px 20px;
   text-align: center;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 4px 20px rgba(102, 126, 234, 0.3);
   transition: transform 0.3s, box-shadow 0.3s;
+  color: white;
+  position: relative;
+  overflow: hidden;
 }
 
 .author-card:hover {
   transform: translateY(-5px);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 8px 30px rgba(102, 126, 234, 0.4);
+}
+
+.author-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, transparent, rgba(255, 255, 255, 0.1));
+  z-index: 1;
 }
 
 .author-avatar {
@@ -102,6 +137,7 @@ const tags = computed(() => blogStore.getAllTags())
   width: 100px;
   height: 100px;
   margin: 0 auto 15px;
+  z-index: 2;
 }
 
 .author-avatar img {
@@ -109,21 +145,30 @@ const tags = computed(() => blogStore.getAllTags())
   height: 100%;
   border-radius: 50%;
   object-fit: cover;
-  border: 4px solid #667eea;
+  border: 4px solid white;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  transition: transform 0.3s;
 }
 
+.author-avatar:hover img {
+  transform: scale(1.05);
+}
 
 .author-name {
   margin: 0 0 8px 0;
-  color: #333;
-  font-size: 1.2rem;
+  font-size: 1.3rem;
+  font-weight: 600;
+  z-index: 2;
+  position: relative;
 }
 
 .author-bio {
-  color: #666;
+  color: rgba(255, 255, 255, 0.9);
   font-size: 0.9rem;
   margin: 0 0 20px 0;
   line-height: 1.4;
+  z-index: 2;
+  position: relative;
 }
 
 .author-stats {
@@ -131,8 +176,10 @@ const tags = computed(() => blogStore.getAllTags())
   justify-content: space-around;
   margin: 20px 0;
   padding: 15px 0;
-  border-top: 1px solid #eee;
-  border-bottom: 1px solid #eee;
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  z-index: 2;
+  position: relative;
 }
 
 .stat-item {
@@ -144,34 +191,41 @@ const tags = computed(() => blogStore.getAllTags())
 .stat-number {
   font-size: 1.4rem;
   font-weight: bold;
-  color: #667eea;
   margin-bottom: 4px;
 }
 
 .stat-label {
   font-size: 0.8rem;
-  color: #888;
+  opacity: 0.9;
 }
 
 .follow-btn {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
+  background: white;
+  color: #667eea;
   border: none;
   padding: 10px 30px;
   border-radius: 25px;
   font-size: 0.9rem;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
   transition: all 0.3s;
   width: 100%;
+  z-index: 2;
+  position: relative;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .follow-btn:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  background: #f8f9fa;
 }
 
+.follow-btn:active {
+  transform: translateY(0);
+}
 
+/* 小工具 */
 .widget {
   background: white;
   border-radius: 12px;
@@ -314,20 +368,119 @@ const tags = computed(() => blogStore.getAllTags())
   opacity: 0.8;
 }
 
+/* 文章列表 */
+.recent-posts,
+.popular-posts {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.recent-post,
+.popular-post {
+  padding: 12px;
+  border-radius: 8px;
+  background: #f8f9fa;
+  border: 1px solid #eee;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.recent-post:hover,
+.popular-post:hover {
+  background: #f0f2ff;
+  border-color: #667eea;
+  transform: translateX(4px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.1);
+}
+
+.post-title {
+  font-size: 0.9rem;
+  color: #333;
+  font-weight: 500;
+  margin-bottom: 8px;
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.post-meta {
+  font-size: 0.8rem;
+  color: #666;
+}
+
+.post-stats {
+  display: flex;
+  gap: 12px;
+  font-size: 0.8rem;
+  color: #666;
+}
+
+/* 归档 */
+.archives {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.archive-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: all 0.3s;
+  background: #f8f9fa;
+  border: 1px solid transparent;
+}
+
+.archive-item:hover {
+  background: #f0f2ff;
+  border-color: #667eea;
+  color: #667eea;
+  transform: translateX(4px);
+}
+
+.archive-date {
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.archive-count {
+  font-size: 0.8rem;
+  color: #999;
+  background: white;
+  padding: 4px 8px;
+  border-radius: 12px;
+  transition: all 0.3s;
+}
+
+.archive-item:hover .archive-count {
+  background: #667eea;
+  color: white;
+}
 
 /* 响应式 */
 @media (max-width: 768px) {
+  .left-sidebar-container {
+    gap: 15px;
+  }
+  
   .author-stats {
     gap: 20px;
   }
   
-  .nav-text {
-    font-size: 0.85rem;
-  }
-  
-  .tag-item {
-    font-size: 0.8rem;
-    padding: 4px 10px;
+  .widget {
+    padding: 15px;
   }
 }
 </style>
