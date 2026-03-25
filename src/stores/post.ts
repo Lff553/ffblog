@@ -24,7 +24,7 @@ export const useBlogStore = defineStore('github', () => {
     owner: 'Lff553',
     repo: 'ffblog',
     issueLabel: 'blog',
-    token: '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'
+    token: import.meta.env.VITE_GITHUB_TOKEN || '' 
   })
 
   // 状态
